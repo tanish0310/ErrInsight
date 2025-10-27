@@ -10,35 +10,35 @@ export const metadata = {
     template: "%s | ErrInsight",
   },
   description:
-    "Instantly translate complex error messages into understandable explanations with AI-powered solutions.",
+    "AI-powered error analysis tool that converts cryptic programming errors into plain English explanations with actionable solutions. Supports 20+ programming languages.",
   openGraph: {
-    title: "ErrInsight",
+    title: "ErrInsight - AI Error Analysis Tool",
     description:
       "Instantly translate complex error messages into understandable explanations with AI-powered solutions.",
     siteName: "ErrInsight",
-    url: "https://errinsight.appwrite.network",
+    url: "https://errinsight.vercel.app", // UPDATE THIS
     type: "website",
     images: [
       {
-        url: "https://errinsight.appwrite.network/og-image.png",
-        width: 800,
-        height: 600,
+        url: "https://errinsight.vercel.app/errinsight.png", // UPDATE THIS
+        width: 1200,
+        height: 630,
         alt: "ErrInsight - Turn Cryptic Errors into Plain English",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "ErrInsight",
+    title: "ErrInsight - AI Error Analysis Tool",
     description:
       "Instantly translate complex error messages into understandable explanations with AI-powered solutions.",
-    images: "https://errinsight.appwrite.network/og-image.png",
+    images: "https://errinsight.vercel.app/errinsight.png", // UPDATE THIS
   },
   robots: "index,follow",
-  canonical: "https://errinsight.appwrite.network",
+  canonical: "https://errinsight.vercel.app", // UPDATE THIS
   keywords:
-    "error translator, debugging, developer tools, AI, error messages, bug fixing, programming errors",
-  author: "Tanish Chowdhury",
+    "error analysis, AI debugging, developer tools, error translator, programming errors, bug fixing, Groq AI, Llama 4, Next.js, error explanations",
+  author: "Tanish Chowdhury", // UPDATE WITH YOUR NAME
 };
 
 export default function RootLayout({ children }) {
@@ -48,7 +48,7 @@ export default function RootLayout({ children }) {
         <link
           rel="icon"
           type="image/x-icon"
-          href="./favicon.ico"
+          href="/favicon.ico"
           sizes="32x32"
         />
         <meta name="description" content={metadata.description} />
@@ -77,11 +77,6 @@ export default function RootLayout({ children }) {
         <link rel="canonical" href={metadata.canonical} />
         <meta name="keywords" content={metadata.keywords} />
         <meta name="author" content={metadata.author} />
-        <script
-          defer
-          src="https://cloud.umami.is/script.js"
-          data-website-id="d8922eaf-0117-4bb9-8701-bbbcff837d85"
-        ></script>
       </head>
       <body className="font-sans antialiased transition-colors duration-300">
         <ThemeProvider>
@@ -92,7 +87,6 @@ export default function RootLayout({ children }) {
             </main>
             <Footer />
           </div>
-
           <Toaster position="bottom-center" richColors closeButton />
         </ThemeProvider>
       </body>
