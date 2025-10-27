@@ -148,16 +148,6 @@ Return ONLY the JSON object, nothing else.`;
       const solutionsArray = Array.isArray(analysis.solutions)
         ? analysis.solutions.map(s => String(s).substring(0, 2000))
         : [];
-      
-      console.log("Attempting to save to database with data:", {
-        clientId,
-        errorMessage: errorMessage.substring(0, 50) + "...",
-        language,
-        causesCount: causesArray.length,
-        solutionsCount: solutionsArray.length,
-        category: analysis.category,
-        severity: analysis.severity,
-      });
 
       try {
         const document = await databases.createDocument(
@@ -180,13 +170,18 @@ Return ONLY the JSON object, nothing else.`;
           }
         );
         
-        console.log("Document saved successfully:", document.$id);
+        console.log("✅ Document saved successfully:", document.$id);
+
+        return {
+          document,
+          causesArray,
+          solutionsArray
+        };
       } catch (saveError) {
-        console.error("Database save error details:", {
+        console.error("❌ Database save error:", {
           message: saveError.message,
           code: saveError.code,
           type: saveError.type,
-          response: saveError.response,
         });
         throw saveError;
       }
@@ -212,15 +207,17 @@ Return ONLY the JSON object, nothing else.`;
         );
       }
 
+      const saveResult = await saveToDatabaseFunc();
+
       return NextResponse.json({
         success: true,
         data: {
-          id: document.$id,
+          id: saveResult.document.$id,
           shareId: shareId,
           analysis: {
             explanation: analysis.explanation,
-            causes: analysis.causes,
-            solutions: analysis.solutions,
+            causes: saveResult.causesArray,
+            solutions: saveResult.solutionsArray,
             category: analysis.category,
             severity: analysis.severity,
             exampleCode: analysis.exampleCode
