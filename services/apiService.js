@@ -126,10 +126,18 @@ export async function getUserHistory() {
       throw new Error(result.error || 'Failed to fetch history');
     }
 
+    console.log("📊 History API Response:", result); // Debug log
+
     return {
-      success: true,
-      errors: result.errors,
-      total: result.total
+      success: result.success,
+      history: result.history || [],
+      stats: result.stats || {
+        total: 0,
+        languages: {},
+        severity: { low: 0, medium: 0, high: 0 },
+        categories: {},
+        timeline: []
+      }
     };
   } catch (error) {
     console.error("History fetch failed:", error);
