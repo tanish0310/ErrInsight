@@ -140,38 +140,56 @@ Return ONLY the JSON object, nothing else.`;
       // Save to database
       const shareId = ID.unique();
       
+      // Ensure arrays are properly formatted for Appwrite
+      const causesArray = Array.isArray(analysis.causes) 
+        ? analysis.causes.map(c => String(c).substring(0, 500))
+        : [];
+      
+      const solutionsArray = Array.isArray(analysis.solutions)
+        ? analysis.solutions.map(s => String(s).substring(0, 2000))
+        : [];
+      
       console.log("Attempting to save to database with data:", {
         clientId,
         errorMessage: errorMessage.substring(0, 50) + "...",
         language,
-        hasExplanation: !!analysis.explanation,
-        causesCount: analysis.causes?.length,
-        solutionsCount: analysis.solutions?.length,
+        causesCount: causesArray.length,
+        solutionsCount: solutionsArray.length,
         category: analysis.category,
         severity: analysis.severity,
       });
 
-      const document = await databases.createDocument(
-        process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
-        process.env.NEXT_PUBLIC_APPWRITE_ERROR_SUBMISSIONS_COLLECTION_ID,
-        ID.unique(),
-        {
-          clientId,
-          errorMessage,
-          language,
-          explanation: analysis.explanation,
-          causes: analysis.causes || [],
-          solutions: analysis.solutions || [],
-          category: analysis.category || "Runtime Error",
-          severity: analysis.severity || "medium",
-          exampleCode: analysis.exampleCode || "",
-          isShared: false,
-          isPrivate: false,
-          shareId: shareId,
-        }
-      );
-      
-      console.log("Document saved successfully:", document.$id);
+      try {
+        const document = await databases.createDocument(
+          process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
+          process.env.NEXT_PUBLIC_APPWRITE_ERROR_SUBMISSIONS_COLLECTION_ID,
+          ID.unique(),
+          {
+            clientId,
+            errorMessage: errorMessage.substring(0, 10000),
+            language: language.substring(0, 50),
+            explanation: String(analysis.explanation || "").substring(0, 5000),
+            causes: causesArray,
+            solutions: solutionsArray,
+            category: String(analysis.category || "Runtime Error").substring(0, 100),
+            severity: String(analysis.severity || "medium").substring(0, 20),
+            exampleCode: analysis.exampleCode ? String(analysis.exampleCode).substring(0, 5000) : "",
+            isShared: false,
+            isPrivate: false,
+            shareId: shareId,
+          }
+        );
+        
+        console.log("Document saved successfully:", document.$id);
+      } catch (saveError) {
+        console.error("Database save error details:", {
+          message: saveError.message,
+          code: saveError.code,
+          type: saveError.type,
+          response: saveError.response,
+        });
+        throw saveError;
+      }
 
       // Update usage count
       if (usageDocId) {
