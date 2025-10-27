@@ -101,13 +101,34 @@ Provide your response in the following JSON format:
       try {
         // Extract JSON from response (AI might add markdown formatting)
         const jsonMatch = text.match(/\{[\s\S]*\}/);
-        analysis = JSON.parse(jsonMatch ? jsonMatch[0] : text);
+        const jsonText = jsonMatch ? jsonMatch[0] : text;
+        
+        console.log("AI Response:", text); // Debug log
+        console.log("Extracted JSON:", jsonText); // Debug log
+        
+        analysis = JSON.parse(jsonText);
+        
+        // Validate required fields
+        if (!analysis.explanation || !analysis.causes || !analysis.solutions) {
+          throw new Error("AI response missing required fields");
+        }
       } catch (parseError) {
         console.error("Failed to parse AI response:", parseError);
-        return NextResponse.json(
-          { error: "Failed to parse AI response" },
-          { status: 500 }
-        );
+        console.error("Raw AI response:", text);
+        
+        // Fallback: create a basic analysis from the raw text
+        analysis = {
+          explanation: text.substring(0, 500) || "Unable to analyze this error. Please try again.",
+          causes: ["Unable to determine specific causes. Please check the error format."],
+          solutions: [{
+            title: "Verify Error Format",
+            description: "Ensure the error message is complete and properly formatted.",
+            code: ""
+          }],
+          category: "Unknown Error",
+          severity: "medium",
+          exampleCode: null
+        };
       }
 
       // Save to database
