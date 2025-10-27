@@ -6,50 +6,63 @@ export async function getConsistentClientId() {
     return globalClientId;
   }
 
+  // Try to get from localStorage first
+  if (typeof window !== 'undefined') {
+    const storedId = localStorage.getItem('errexplain_client_id');
+    if (storedId) {
+      globalClientId = storedId;
+      return globalClientId;
+    }
+  }
+
+  // Try to get from rate limit check
   try {
     const rateData = await checkRateLimit();
     if (rateData.clientId) {
       globalClientId = rateData.clientId;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('errexplain_client_id', globalClientId);
+      }
       return globalClientId;
     }
   } catch (error) {
     console.error("Failed to get clientId from rate limit check:", error);
   }
 
-  try {
-    const { functions } = await import("../utils/appwriteClient");
-    const FUNCTION_ID = process.env.NEXT_PUBLIC_APPWRITE_FUNCTION_ID;
-
-    const response = await functions.createExecution(
-      FUNCTION_ID,
-      JSON.stringify({ action: "GET_CLIENT_ID" }),
-      false
-    );
-
-    const result = JSON.parse(response.responseBody);
-    if (result.success && result.clientId) {
-      globalClientId = result.clientId;
-      return globalClientId;
-    }
-  } catch (error) {
-    console.error("Failed to get clientId from function:", error);
+  // Generate new client ID if all else fails
+  if (typeof window !== 'undefined') {
+    const newClientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    localStorage.setItem('errexplain_client_id', newClientId);
+    globalClientId = newClientId;
+    return globalClientId;
   }
 
   return null;
 }
 
-// Check rate limit status from Appwrite function.
+// Check rate limit status from Next.js API route
 async function checkRateLimit() {
-  const { functions } = await import("../utils/appwriteClient");
-  const FUNCTION_ID = process.env.NEXT_PUBLIC_APPWRITE_FUNCTION_ID;
+  // Get client ID from localStorage
+  let clientId = null;
+  if (typeof window !== 'undefined') {
+    clientId = localStorage.getItem('errexplain_client_id');
+    if (!clientId) {
+      clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('errexplain_client_id', clientId);
+    }
+  }
 
-  const response = await functions.createExecution(
-    FUNCTION_ID,
-    JSON.stringify({ action: "GET_STATUS" }),
-    false
-  );
+  if (!clientId) {
+    throw new Error('Could not generate client ID');
+  }
 
-  return JSON.parse(response.responseBody);
+  const response = await fetch(`/api/rate-limit?clientId=${clientId}`);
+  const data = await response.json();
+  
+  return {
+    ...data,
+    clientId: clientId
+  };
 }
 
 // Detect programming language or environment from an error message.
