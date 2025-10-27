@@ -1,6 +1,26 @@
-import { functions } from "@/utils/appwriteClient";
+// Generate a simple client ID (fingerprint)
+function getClientId() {
+  if (typeof window === 'undefined') return null;
+  
+  let clientId = localStorage.getItem('errexplain_client_id');
+  if (!clientId) {
+    clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    localStorage.setItem('errexplain_client_id', clientId);
+  }
+  return clientId;
+}
 
-const FUNCTION_ID = process.env.NEXT_PUBLIC_APPWRITE_FUNCTION_ID;
+// Generate user fingerprint for voting
+function getUserFingerprint() {
+  if (typeof window === 'undefined') return null;
+  
+  let fingerprint = localStorage.getItem('errexplain_fingerprint');
+  if (!fingerprint) {
+    fingerprint = `fp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    localStorage.setItem('errexplain_fingerprint', fingerprint);
+  }
+  return fingerprint;
+}
 
 // Analyze an error message
 export async function analyzeError({
@@ -9,23 +29,30 @@ export async function analyzeError({
   isPrivate = false,
 }) {
   try {
-    const response = await functions.createExecution(
-      FUNCTION_ID,
-      JSON.stringify({ errorMessage, language, isPrivate }),
-      false,
-      undefined,
-      undefined
-    );
+    const clientId = getClientId();
+    
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        errorMessage, 
+        language, 
+        isPrivate,
+        clientId 
+      }),
+    });
 
-    const result = JSON.parse(response.responseBody);
+    const result = await response.json();
 
-    if (!result.success && result.error) {
-      throw new Error(result.error);
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to analyze error');
     }
 
     return result;
   } catch (error) {
-    console.error("Function execution failed:", error);
+    console.error("Analysis failed:", error);
     throw new Error(error.message || "Failed to analyze error message");
   }
 }
@@ -33,21 +60,19 @@ export async function analyzeError({
 // Check rate limit status
 export async function checkRateLimit() {
   try {
-    const response = await functions.createExecution(
-      FUNCTION_ID,
-      JSON.stringify({ action: "GET_STATUS" }),
-      false,
-      undefined,
-      undefined
-    );
+    const clientId = getClientId();
+    
+    const response = await fetch(`/api/rate-limit?clientId=${clientId}`, {
+      method: 'GET',
+    });
 
-    const result = JSON.parse(response.responseBody);
+    const result = await response.json();
 
-    if (result.error && !result.remaining) {
+    if (!response.ok) {
       console.error("Rate limit check error:", result.error);
       return {
         remaining: 5,
-        maxRequests: 5,
+        limit: 5,
         canAnalyze: true,
         loading: false,
       };
@@ -55,17 +80,19 @@ export async function checkRateLimit() {
 
     return {
       remaining: result.remaining || 5,
-      maxRequests: result.maxRequests || 5,
-      resetTime: result.resetTime ? new Date(result.resetTime) : null,
+      maxRequests: result.limit || 5,
+      limit: result.limit || 5,
+      resetTime: result.resetsAt ? new Date(result.resetsAt) : null,
       canAnalyze: result.canAnalyze !== false,
       loading: false,
-      clientId: result.clientId,
+      clientId: result.clientId || clientId,
     };
   } catch (error) {
     console.error("Rate limit check failed:", error);
     return {
       remaining: 5,
       maxRequests: 5,
+      limit: 5,
       canAnalyze: true,
       loading: false,
     };
@@ -73,47 +100,30 @@ export async function checkRateLimit() {
 }
 
 // Get client ID
-export async function getClientId() {
-  try {
-    const response = await functions.createExecution(
-      FUNCTION_ID,
-      JSON.stringify({ action: "GET_CLIENT_ID" }),
-      false,
-      undefined,
-      undefined
-    );
-
-    const result = JSON.parse(response.responseBody);
-
-    if (result.success && result.clientId) {
-      return result.clientId;
-    }
-
-    throw new Error("Failed to get client ID");
-  } catch (error) {
-    console.error("Client ID fetch failed:", error);
-    throw new Error(error.message || "Failed to get client ID");
-  }
+export async function getClientIdFromApi() {
+  return getClientId();
 }
 
 // Get user history
 export async function getUserHistory() {
   try {
-    const response = await functions.createExecution(
-      FUNCTION_ID,
-      JSON.stringify({ action: "GET_HISTORY" }),
-      false,
-      undefined,
-      undefined
-    );
+    const clientId = getClientId();
+    
+    const response = await fetch(`/api/history?clientId=${clientId}`, {
+      method: 'GET',
+    });
 
-    const result = JSON.parse(response.responseBody);
+    const result = await response.json();
 
-    if (result.success) {
-      return result;
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to fetch history');
     }
 
-    throw new Error(result.error || "Failed to fetch history");
+    return {
+      success: true,
+      errors: result.errors,
+      total: result.total
+    };
   } catch (error) {
     console.error("History fetch failed:", error);
     throw new Error(error.message || "Failed to fetch user history");
@@ -123,21 +133,30 @@ export async function getUserHistory() {
 // Share an error
 export async function shareError(errorId) {
   try {
-    const response = await functions.createExecution(
-      FUNCTION_ID,
-      JSON.stringify({ action: "SHARE_ERROR", errorId }),
-      false,
-      undefined,
-      undefined
-    );
+    const clientId = getClientId();
+    
+    const response = await fetch('/api/share', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        documentId: errorId,
+        clientId 
+      }),
+    });
 
-    const result = JSON.parse(response.responseBody);
+    const result = await response.json();
 
-    if (result.success) {
-      return result;
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to share error');
     }
 
-    throw new Error(result.error || "Failed to share error");
+    return {
+      success: true,
+      shareId: result.shareId,
+      shareUrl: result.shareUrl
+    };
   } catch (error) {
     console.error("Share error failed:", error);
     throw new Error(error.message || "Failed to share error");
@@ -147,46 +166,50 @@ export async function shareError(errorId) {
 // Delete a history item
 export async function deleteHistoryItem(historyId) {
   try {
-    const response = await functions.createExecution(
-      FUNCTION_ID,
-      JSON.stringify({ action: "DELETE_HISTORY", historyId }),
-      false,
-      undefined,
-      undefined
-    );
+    const clientId = getClientId();
+    
+    const response = await fetch(`/api/delete?documentId=${historyId}&clientId=${clientId}`, {
+      method: 'DELETE',
+    });
 
-    const result = JSON.parse(response.responseBody);
+    const result = await response.json();
 
-    if (result.success) {
-      return result;
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to delete history item');
     }
 
-    throw new Error(result.error || "Failed to delete history item");
+    return {
+      success: true,
+      message: result.message
+    };
   } catch (error) {
     console.error("Delete history failed:", error);
     throw new Error(error.message || "Failed to delete history item");
   }
 }
 
-// Vote on a solution - FIXED VERSION
-export async function voteSolution(shareId, voteType) {
+// Vote on a solution
+export async function voteSolution(shareId, voteType, solutionIndex = 0) {
   try {
-    const response = await functions.createExecution(
-      FUNCTION_ID,
-      JSON.stringify({
-        action: "VOTE_SOLUTION",
-        shareId: shareId,
-        voteType: voteType,
+    const userFingerprint = getUserFingerprint();
+    
+    const response = await fetch('/api/vote', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        shareId,
+        solutionIndex,
+        voteType,
+        userFingerprint
       }),
-      false,
-      undefined,
-      undefined
-    );
+    });
 
-    const result = JSON.parse(response.responseBody);
+    const result = await response.json();
 
-    if (!result.success) {
-      throw new Error(result.error || "Failed to record vote");
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to record vote');
     }
 
     return result.votes;
@@ -199,26 +222,23 @@ export async function voteSolution(shareId, voteType) {
 // Get solution votes for a shared error
 export async function getSolutionVotes(shareId) {
   try {
-    const response = await functions.createExecution(
-      FUNCTION_ID,
-      JSON.stringify({
-        action: "GET_SOLUTION_VOTES",
-        shareId,
-      }),
-      false,
-      undefined,
-      undefined
-    );
+    // This would need a GET endpoint, but for now we can return from the vote response
+    // Or you can add a GET /api/votes?shareId=... endpoint
+    const response = await fetch(`/api/vote?shareId=${shareId}`, {
+      method: 'GET',
+    });
 
-    const result = JSON.parse(response.responseBody);
+    const result = await response.json();
 
-    if (!result.success) {
-      throw new Error(result.error || "Failed to fetch votes");
+    if (!response.ok) {
+      return { helpful: 0, notHelpful: 0 };
     }
 
-    return result.votes;
+    return result.votes || { helpful: 0, notHelpful: 0 };
   } catch (error) {
     console.error("Get votes failed:", error);
-    throw new Error(error.message || "Failed to fetch votes");
+    return { helpful: 0, notHelpful: 0 };
   }
 }
+
+export { getClientId };
