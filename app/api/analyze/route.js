@@ -139,6 +139,18 @@ Return ONLY the JSON object, nothing else.`;
 
       // Save to database
       const shareId = ID.unique();
+      
+      console.log("Attempting to save to database with data:", {
+        clientId,
+        errorMessage: errorMessage.substring(0, 50) + "...",
+        language,
+        hasExplanation: !!analysis.explanation,
+        causesCount: analysis.causes?.length,
+        solutionsCount: analysis.solutions?.length,
+        category: analysis.category,
+        severity: analysis.severity,
+      });
+
       const document = await databases.createDocument(
         process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
         process.env.NEXT_PUBLIC_APPWRITE_ERROR_SUBMISSIONS_COLLECTION_ID,
@@ -148,16 +160,18 @@ Return ONLY the JSON object, nothing else.`;
           errorMessage,
           language,
           explanation: analysis.explanation,
-          causes: analysis.causes,
-          solutions: analysis.solutions,
+          causes: analysis.causes || [],
+          solutions: analysis.solutions || [],
           category: analysis.category || "Runtime Error",
           severity: analysis.severity || "medium",
-          exampleCode: analysis.exampleCode || null,
+          exampleCode: analysis.exampleCode || "",
           isShared: false,
           isPrivate: false,
           shareId: shareId,
         }
       );
+      
+      console.log("Document saved successfully:", document.$id);
 
       // Update usage count
       if (usageDocId) {
