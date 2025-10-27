@@ -109,8 +109,8 @@ Return ONLY the JSON object, nothing else.`;
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         const jsonText = jsonMatch ? jsonMatch[0] : text;
         
-        console.log("AI Response:", text); // Debug log
-        console.log("Extracted JSON:", jsonText); // Debug log
+        console.log("AI Response:", text);
+        console.log("Extracted JSON:", jsonText);
         
         analysis = JSON.parse(jsonText);
         
@@ -126,11 +126,7 @@ Return ONLY the JSON object, nothing else.`;
         analysis = {
           explanation: text.substring(0, 500) || "Unable to analyze this error. Please try again.",
           causes: ["Unable to determine specific causes. Please check the error format."],
-          solutions: [{
-            title: "Verify Error Format",
-            description: "Ensure the error message is complete and properly formatted.",
-            code: ""
-          }],
+          solutions: ["Verify Error Format", "Ensure the error message is complete and properly formatted."],
           category: "Unknown Error",
           severity: "medium",
           exampleCode: null
@@ -149,42 +145,27 @@ Return ONLY the JSON object, nothing else.`;
         ? analysis.solutions.map(s => String(s).substring(0, 2000))
         : [];
 
-      try {
-        const document = await databases.createDocument(
-          process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
-          process.env.NEXT_PUBLIC_APPWRITE_ERROR_SUBMISSIONS_COLLECTION_ID,
-          ID.unique(),
-          {
-            clientId,
-            errorMessage: errorMessage.substring(0, 10000),
-            language: language.substring(0, 50),
-            explanation: String(analysis.explanation || "").substring(0, 5000),
-            causes: causesArray,
-            solutions: solutionsArray,
-            category: String(analysis.category || "Runtime Error").substring(0, 100),
-            severity: String(analysis.severity || "medium").substring(0, 20),
-            exampleCode: analysis.exampleCode ? String(analysis.exampleCode).substring(0, 5000) : "",
-            isShared: false,
-            isPrivate: false,
-            shareId: shareId,
-          }
-        );
-        
-        console.log("✅ Document saved successfully:", document.$id);
-
-        return {
-          document,
-          causesArray,
-          solutionsArray
-        };
-      } catch (saveError) {
-        console.error("❌ Database save error:", {
-          message: saveError.message,
-          code: saveError.code,
-          type: saveError.type,
-        });
-        throw saveError;
-      }
+      const document = await databases.createDocument(
+        process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
+        process.env.NEXT_PUBLIC_APPWRITE_ERROR_SUBMISSIONS_COLLECTION_ID,
+        ID.unique(),
+        {
+          clientId,
+          errorMessage: errorMessage.substring(0, 10000),
+          language: language.substring(0, 50),
+          explanation: String(analysis.explanation || "").substring(0, 5000),
+          causes: causesArray,
+          solutions: solutionsArray,
+          category: String(analysis.category || "Runtime Error").substring(0, 100),
+          severity: String(analysis.severity || "medium").substring(0, 20),
+          exampleCode: analysis.exampleCode ? String(analysis.exampleCode).substring(0, 5000) : "",
+          isShared: false,
+          isPrivate: false,
+          shareId: shareId,
+        }
+      );
+      
+      console.log("✅ Document saved successfully:", document.$id);
 
       // Update usage count
       if (usageDocId) {
@@ -207,17 +188,15 @@ Return ONLY the JSON object, nothing else.`;
         );
       }
 
-      const saveResult = await saveToDatabaseFunc();
-
       return NextResponse.json({
         success: true,
         data: {
-          id: saveResult.document.$id,
+          id: document.$id,
           shareId: shareId,
           analysis: {
             explanation: analysis.explanation,
-            causes: saveResult.causesArray,
-            solutions: saveResult.solutionsArray,
+            causes: causesArray,
+            solutions: solutionsArray,
             category: analysis.category,
             severity: analysis.severity,
             exampleCode: analysis.exampleCode
@@ -227,7 +206,7 @@ Return ONLY the JSON object, nothing else.`;
       });
 
     } catch (dbError) {
-      console.error("Database error:", dbError);
+      console.error("❌ Database error:", dbError);
       return NextResponse.json(
         { error: "Database operation failed" },
         { status: 500 }
@@ -235,7 +214,7 @@ Return ONLY the JSON object, nothing else.`;
     }
 
   } catch (error) {
-    console.error("Analysis API error:", error);
+    console.error("❌ Analysis API error:", error);
     return NextResponse.json(
       { error: "Failed to analyze error" },
       { status: 500 }
