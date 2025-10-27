@@ -1,6 +1,65 @@
 import { Client, Databases, ID, Query } from "node-appwrite";
 import { NextResponse } from "next/server";
 
+export async function GET(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const shareId = searchParams.get("shareId");
+
+    if (!shareId) {
+      return NextResponse.json(
+        { error: "shareId is required" },
+        { status: 400 }
+      );
+    }
+
+    if (
+      !process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT ||
+      !process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID ||
+      !process.env.APPWRITE_API_KEY ||
+      !process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID
+    ) {
+      return NextResponse.json({ votes: { helpful: 0, notHelpful: 0 } });
+    }
+
+    const client = new Client()
+      .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT)
+      .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID)
+      .setKey(process.env.APPWRITE_API_KEY);
+
+    const databases = new Databases(client);
+
+    const helpfulVotes = await databases.listDocuments(
+      process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
+      process.env.NEXT_PUBLIC_APPWRITE_SOLUTION_VOTES_COLLECTION_ID || 'solution-votes',
+      [
+        Query.equal("shareId", shareId),
+        Query.equal("voteType", "helpful")
+      ]
+    );
+
+    const notHelpfulVotes = await databases.listDocuments(
+      process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
+      process.env.NEXT_PUBLIC_APPWRITE_SOLUTION_VOTES_COLLECTION_ID || 'solution-votes',
+      [
+        Query.equal("shareId", shareId),
+        Query.equal("voteType", "not_helpful")
+      ]
+    );
+
+    return NextResponse.json({
+      success: true,
+      votes: {
+        helpful: helpfulVotes.total,
+        notHelpful: notHelpfulVotes.total
+      }
+    });
+  } catch (error) {
+    console.error("Get votes error:", error);
+    return NextResponse.json({ votes: { helpful: 0, notHelpful: 0 } });
+  }
+}
+
 export async function POST(request) {
   try {
     const { shareId, solutionIndex, voteType, userFingerprint } = await request.json();
