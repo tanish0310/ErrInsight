@@ -42,7 +42,7 @@ export async function GET(request) {
         [
           Query.equal("clientId", clientId),
           Query.orderDesc("$createdAt"),
-          Query.limit(100) // Limit to last 100 errors
+          Query.limit(100)
         ]
       );
 
@@ -52,25 +52,68 @@ export async function GET(request) {
         total: response.total
       });
 
-      const errors = response.documents.map(doc => ({
+      // Transform documents to match component format
+      const history = response.documents.map(doc => ({
         id: doc.$id,
         errorMessage: doc.errorMessage,
         language: doc.language,
-        category: doc.category,
-        severity: doc.severity,
+        category: doc.category || "Runtime Error",
+        severity: doc.severity || "medium",
         timestamp: doc.$createdAt,
-        isShared: doc.isShared,
+        isShared: doc.isShared || false,
+        isPrivate: doc.isPrivate || false,
         shareId: doc.shareId,
-        explanation: doc.explanation,
-        causes: doc.causes || [],
-        solutions: doc.solutions || [],
-        exampleCode: doc.exampleCode || null
+        analysis: {
+          explanation: doc.explanation,
+          causes: doc.causes || [],
+          solutions: doc.solutions || [],
+          exampleCode: doc.exampleCode || null
+        }
       }));
+
+      // Calculate stats
+      const languages = {};
+      const severity = { low: 0, medium: 0, high: 0 };
+      const categories = {};
+      const timelineMap = {};
+
+      history.forEach(item => {
+        // Count languages
+        languages[item.language] = (languages[item.language] || 0) + 1;
+
+        // Count severity
+        const sev = item.severity.toLowerCase();
+        if (severity.hasOwnProperty(sev)) {
+          severity[sev]++;
+        }
+
+        // Count categories
+        categories[item.category] = (categories[item.category] || 0) + 1;
+
+        // Build timeline (last 7 days)
+        const date = new Date(item.timestamp);
+        const dateKey = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        timelineMap[dateKey] = (timelineMap[dateKey] || 0) + 1;
+      });
+
+      // Convert timeline to array
+      const timeline = Object.entries(timelineMap)
+        .map(([label, count]) => ({ label, count }))
+        .slice(0, 7)
+        .reverse();
+
+      const stats = {
+        total: history.length,
+        languages,
+        severity,
+        categories,
+        timeline
+      };
 
       return NextResponse.json({
         success: true,
-        errors: errors,
-        total: response.total
+        history: history,
+        stats: stats
       });
 
     } catch (error) {
@@ -79,16 +122,33 @@ export async function GET(request) {
         { 
           success: false,
           error: "Failed to fetch error history",
-          errors: [],
-          total: 0
+          history: [],
+          stats: {
+            total: 0,
+            languages: {},
+            severity: { low: 0, medium: 0, high: 0 },
+            categories: {},
+            timeline: []
+          }
         },
         { status: 500 }
       );
     }
   } catch (error) {
-    console.error("History API error:", error);
+    console.error("❌ History API error:", error);
     return NextResponse.json(
-      { error: "Failed to process request" },
+      { 
+        success: false,
+        error: "Failed to process request",
+        history: [],
+        stats: {
+          total: 0,
+          languages: {},
+          severity: { low: 0, medium: 0, high: 0 },
+          categories: {},
+          timeline: []
+        }
+      },
       { status: 500 }
     );
   }
