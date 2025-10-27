@@ -69,25 +69,31 @@ export async function POST(request) {
       }
 
       // Call Groq AI for analysis
-      const prompt = `Analyze this ${language} error and provide a structured response:
+      const prompt = `You are an expert programmer analyzing errors. Analyze this ${language} error and respond ONLY with valid JSON, no markdown, no extra text.
 
-Error: ${errorMessage}
+Error Message:
+${errorMessage}
 
-Provide your response in the following JSON format:
+Respond with ONLY this JSON structure (no markdown code blocks, no explanations outside JSON):
 {
-  "explanation": "Clear explanation of what this error means",
+  "explanation": "Clear 2-3 sentence explanation of what this error means",
   "causes": ["cause1", "cause2", "cause3"],
-  "solutions": [
-    {
-      "title": "Solution title",
-      "description": "Detailed solution",
-      "code": "example code if applicable"
-    }
-  ],
-  "category": "one of: Syntax Error, Runtime Error, Logic Error, Configuration Error, Network Error, Database Error",
-  "severity": "one of: low, medium, high, critical",
-  "exampleCode": "minimal reproducible code example that causes this error"
-}`;
+  "solutions": ["solution1", "solution2", "solution3"],
+  "category": "Runtime Error",
+  "severity": "medium",
+  "exampleCode": "// minimal code that reproduces this error"
+}
+
+Rules:
+- solutions must be an array of strings, not objects
+- Use one of these categories: Syntax Error, Runtime Error, Logic Error, Configuration Error, Network Error, Database Error
+- Use one of these severities: low, medium, high, critical
+- Keep explanation under 500 characters
+- Provide 3-5 causes
+- Provide 3-5 solutions as simple strings
+- exampleCode should be actual working code (optional, can be null)
+
+Return ONLY the JSON object, nothing else.`;
 
       const { text } = await generateText({
         model: groq('llama-3.3-70b-versatile'),
