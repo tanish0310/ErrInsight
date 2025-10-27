@@ -46,6 +46,12 @@ export async function GET(request) {
         ]
       );
 
+      console.log("📋 History fetch:", {
+        clientId,
+        found: response.documents.length,
+        total: response.total
+      });
+
       const errors = response.documents.map(doc => ({
         id: doc.$id,
         errorMessage: doc.errorMessage,
@@ -56,9 +62,9 @@ export async function GET(request) {
         isShared: doc.isShared,
         shareId: doc.shareId,
         explanation: doc.explanation,
-        causes: doc.causes,
-        solutions: doc.solutions,
-        exampleCode: doc.exampleCode
+        causes: doc.causes || [],
+        solutions: doc.solutions || [],
+        exampleCode: doc.exampleCode || null
       }));
 
       return NextResponse.json({
@@ -68,9 +74,14 @@ export async function GET(request) {
       });
 
     } catch (error) {
-      console.error("Error fetching history:", error);
+      console.error("❌ Error fetching history:", error);
       return NextResponse.json(
-        { error: "Failed to fetch error history" },
+        { 
+          success: false,
+          error: "Failed to fetch error history",
+          errors: [],
+          total: 0
+        },
         { status: 500 }
       );
     }
