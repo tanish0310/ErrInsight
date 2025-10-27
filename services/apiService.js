@@ -50,7 +50,14 @@ export async function analyzeError({
       throw new Error(result.error || 'Failed to analyze error');
     }
 
-    return result;
+    console.log("API Response:", result); // Debug log
+
+    // Return in the format the component expects
+    return {
+      success: result.success,
+      analysis: result.analysis,
+      rateLimit: result.rateLimit
+    };
   } catch (error) {
     console.error("Analysis failed:", error);
     throw new Error(error.message || "Failed to analyze error message");
