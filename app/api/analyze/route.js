@@ -9,7 +9,7 @@ const groq = createGroq({
 
 export async function POST(request) {
   try {
-    const { errorMessage, language, clientId } = await request.json();
+    const { errorMessage, language, clientId, isPrivate } = await request.json();
 
     if (!errorMessage || !language || !clientId) {
       return NextResponse.json(
@@ -17,6 +17,8 @@ export async function POST(request) {
         { status: 400 }
       );
     }
+
+    console.log("📥 Analyze request:", { clientId, language, isPrivate: isPrivate || false });
 
     // Check if Appwrite is configured
     if (
@@ -160,12 +162,12 @@ Return ONLY the JSON object, nothing else.`;
           severity: String(analysis.severity || "medium").substring(0, 20),
           exampleCode: analysis.exampleCode ? String(analysis.exampleCode).substring(0, 5000) : "",
           isShared: false,
-          isPrivate: false,
+          isPrivate: isPrivate === true, // Use the value from request
           shareId: shareId,
         }
       );
       
-      console.log("✅ Document saved successfully:", document.$id);
+      console.log("✅ Document saved:", { id: document.$id, isPrivate: document.isPrivate });
 
       // Update usage count
       if (usageDocId) {

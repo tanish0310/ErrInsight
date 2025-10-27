@@ -35,12 +35,13 @@ export async function GET(request) {
     const databases = new Databases(client);
 
     try {
-      // Get user's error history
+      // Get user's error history (exclude private entries)
       const response = await databases.listDocuments(
         process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
         process.env.NEXT_PUBLIC_APPWRITE_ERROR_SUBMISSIONS_COLLECTION_ID,
         [
           Query.equal("clientId", clientId),
+          Query.equal("isPrivate", false), // Only fetch non-private entries
           Query.orderDesc("$createdAt"),
           Query.limit(100)
         ]
