@@ -190,18 +190,20 @@ Return ONLY the JSON object, nothing else.`;
 
       return NextResponse.json({
         success: true,
-        data: {
+        analysis: {
           id: document.$id,
           shareId: shareId,
-          analysis: {
-            explanation: analysis.explanation,
-            causes: causesArray,
-            solutions: solutionsArray,
-            category: analysis.category,
-            severity: analysis.severity,
-            exampleCode: analysis.exampleCode
-          },
-          remainingAnalyses: 5 - (usageCount + 1)
+          explanation: analysis.explanation,
+          causes: causesArray,
+          solutions: solutionsArray,
+          category: analysis.category,
+          severity: analysis.severity,
+          exampleCode: analysis.exampleCode,
+          language: language
+        },
+        rateLimit: {
+          remaining: 5 - (usageCount + 1),
+          resetTime: null
         }
       });
 
