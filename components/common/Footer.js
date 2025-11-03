@@ -40,15 +40,19 @@ export default function Footer() {
             <span className="hidden sm:inline">Appwrite</span>
           </a>
 
-          <span>by</span>
-          <a
-            href="http://tanishchowdhury.vercel.app/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:underline"
-          >
-            Tanish Chowdhury
-          </a>
+          <span>by Tanish Chowdhury</span>
+          
+          {/*
+<a
+  href="http://tanishchowdhury.vercel.app/"
+  target="_blank"
+  rel="noopener noreferrer"
+  className="hover:underline"
+>
+  Tanish Chowdhury
+</a>
+*/}
+          
         </div>
 
         {/* Share / Sponsor */}
