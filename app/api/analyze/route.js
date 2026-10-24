@@ -97,12 +97,14 @@ Rules:
 
 Return ONLY the JSON object, nothing else.`;
 
-      const { text } = await generateText({
-        model: groq('llama-3.3-70b-versatile'),
-        prompt: prompt,
-        temperature: 0.7,
-        maxTokens: 2000,
-      });
+      
+const { text } = await generateText({
+  model: groq('openai/gpt-oss-120b'),
+  prompt: prompt,
+  temperature: 0.7,
+  maxTokens: 2000,
+});
+
 
       // Parse AI response
       let analysis;
